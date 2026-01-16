@@ -71,6 +71,14 @@ dev_dependencies:
   retrofit_generator: ^10.2.1
   json_serializable: ^6.6.1
   injectable_generator: ^2.9.1
+  flutter_launcher_icons: ^0.14.3
+
+flutter_icons:
+  android: true
+  image_path: assets/icons/base_app_icon.png
+  adaptive_icon_foreground: assets/icons/android_foreground.png
+  adaptive_icon_background: "#FFFFFF" # You can change this color
+  adaptive_icon_monochrome: assets/icons/android_monochrome.png
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
