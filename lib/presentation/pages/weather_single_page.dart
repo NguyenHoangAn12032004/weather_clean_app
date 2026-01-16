@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -13,8 +14,11 @@ import '../widgets/daily_forecast_widget.dart';
 import '../widgets/weather_effects_layer.dart'; 
 import '../widgets/breathing_widget.dart';
 import '../widgets/air_quality_widget.dart';
-import '../widgets/details_grid_widget.dart';
+import '../widgets/weather_detail_list.dart';
 import '../widgets/hourly_forecast_chart.dart';
+import '../widgets/weather_3d_icon.dart';
+import '../bloc/settings/settings_cubit.dart';
+import '../bloc/settings/settings_state.dart';
 import '../widgets/sun_astro_chart.dart';
 
 class WeatherSinglePage extends StatelessWidget {
@@ -34,8 +38,8 @@ class WeatherSinglePage extends StatelessWidget {
          }
          return bloc;
       },
-      child: const Scaffold( // Keep Scaffold for SafeArea mainly
-         backgroundColor: Colors.transparent, // Allow PageView background if needed
+      child: const Scaffold(
+         backgroundColor: Colors.transparent, 
          resizeToAvoidBottomInset: false,
          body: _WeatherView(),
       ),
@@ -103,144 +107,128 @@ class _WeatherView extends StatelessWidget {
     final forecast = state.forecast;
     final airQuality = state.airQuality;
 
-    return RefreshIndicator(
-      onRefresh: () async {
-         // Re-fetch logic based on current state City
-         context.read<WeatherBloc>().add(GetWeatherForCity(weather.cityName));
-      },
-      child: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
-          child: Column(
-            children: [
-              // --- TOP BAR ---
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                         Row(
-                           children: [
-                            if (context.read<WeatherBloc>().toString().contains('GPS')) // Optional: Helper to know if GPS
-                               const Icon(Icons.location_on, color: Colors.white, size: 20),
-                            // Or just always show location icon or different icon for saved cities?
-                            // For now simple Title
-                            Flexible(
-                              child: Text(
-                                weather.cityName,
-                                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                      shadows: [
-                                        const Shadow(offset: Offset(0, 2), blurRadius: 4.0, color: Colors.black26),
-                                      ],
-                                    ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                           ],
-                         ),
-                         const SizedBox(height: 4),
-                         DigitalClock(utcOffsetSeconds: weather.timezone), 
-                      ],
-                    ),
-                  ),
-                  // Actions: Only Keep Search? Or maybe List Menu?
-                  // In PageView, we usually have a "List" button at bottom or top right
-                  IconButton(
-                    icon: const Icon(Icons.list, color: Colors.white, size: 28),
-                    onPressed: () {
-                       // Navigate to City Management?
-                       // user request was just to swipe, but let's keep search here for now inside pages?
-                       // Ideally Search -> Add City.
-                       context.push('/search'); // We'll modify search to ADD city later
-                    },
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 40),
+    return BlocBuilder<SettingsCubit, SettingsState>(
+      bloc: getIt<SettingsCubit>(),
+      builder: (context, settingsState) {
+        
+        // Helper
+        String getTemp(double c, {bool showUnit = true}) {
+           if (settingsState.tempUnit == TemperatureUnit.fahrenheit) {
+             final f = (c * 9 / 5) + 32;
+             return '${f.toStringAsFixed(0)}${showUnit ? "°" : ""}';
+           }
+           return '${c.toStringAsFixed(0)}${showUnit ? "°" : ""}';
+        }
 
-              // --- MAIN INFO ---
-              Column(
+        return RefreshIndicator(
+          onRefresh: () async {
+             context.read<WeatherBloc>().add(GetWeatherForCity(weather.cityName));
+          },
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+              child: Column(
                 children: [
-                   BreathingWidget(
-                      child: Image.network(
-                        'https://openweathermap.org/img/wn/${weather.iconCode}@4x.png',
-                        width: 160, height: 160,
-                        fit: BoxFit.contain,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return const SizedBox(
-                            width: 160, height: 160,
-                            child: Center(child: CircularProgressIndicator(color: Colors.white24)),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) => const Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                  // --- TOP BAR ---
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.image_not_supported, size: 80, color: Colors.white54),
-                            Text('Lỗi ảnh', style: TextStyle(color: Colors.white54, fontSize: 10)),
+                             Row(
+                               children: [
+                                if (context.read<WeatherBloc>().toString().contains('GPS')) 
+                                   const Icon(Icons.location_on, color: Colors.white, size: 20),
+                                Flexible(
+                                  child: Text(
+                                    weather.cityName,
+                                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                          shadows: [
+                                            const Shadow(offset: Offset(0, 2), blurRadius: 4.0, color: Colors.black26),
+                                          ],
+                                        ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                               ],
+                             ),
+                             const SizedBox(height: 4),
+                             DigitalClock(utcOffsetSeconds: weather.timezone), 
                           ],
                         ),
                       ),
-                   ),
-                  Text(
-                    '${weather.temperature.toStringAsFixed(0)}°',
-                    style: const TextStyle(fontSize: 100, fontWeight: FontWeight.w200, color: Colors.white, height: 1.0),
+                      // Removed Map Button
+                    ],
                   ),
-                  Text(
-                    weather.description.replaceFirst(weather.description[0], weather.description[0].toUpperCase()), 
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.white70, fontWeight: FontWeight.w500),
+                  
+                  const SizedBox(height: 40),
+
+                  // --- MAIN INFO ---
+                  Column(
+                    children: [
+                       // 3D Animated Icon (Premium)
+                       BreathingWidget(
+                          child: Weather3DIcon(
+                            iconCode: weather.iconCode,
+                            size: 180, 
+                          ),
+                       ),
+                      Text(
+                        // Explicitly show C or F if user wants "Ghi rõ chữ C và F"
+                        getTemp(weather.temperature, showUnit: false) + '°', // 100°
+                        style: const TextStyle(fontSize: 100, fontWeight: FontWeight.w200, color: Colors.white, height: 1.0),
+                      ),
+                      Text(
+                        weather.description.replaceFirst(weather.description[0], weather.description[0].toUpperCase()), 
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.white70, fontWeight: FontWeight.w500),
+                      ),
+                      Text(
+                        // Explicit Unit labels for High/Low
+                        'Cao nhất: ${getTemp(weather.temperature)}${settingsState.tempUnit == TemperatureUnit.celsius ? "C" : "F"}  Thấp nhất: ${getTemp(weather.feelsLike)}${settingsState.tempUnit == TemperatureUnit.celsius ? "C" : "F"}', 
+                        style: const TextStyle(color: Colors.white, fontSize: 16),
+                      ),
+                    ],
                   ),
-                  Text(
-                    'Cao nhất: ${weather.temperature.toStringAsFixed(0)}°  Thấp nhất: ${weather.feelsLike.toStringAsFixed(0)}°', 
-                    style: const TextStyle(color: Colors.white, fontSize: 16),
-                  ),
+
+                  const SizedBox(height: 40),
+
+                  // --- CHARTS & DETAILS ---
+                  if (forecast != null && forecast.list.isNotEmpty) ...[
+                    HourlyForecastChart(items: forecast.list),
+                    const SizedBox(height: 20),
+                  ],
+
+                  if (forecast != null && forecast.list.isNotEmpty) ...[
+                    DailyForecastWidget(items: forecast.list),
+                    const SizedBox(height: 20),
+                  ],
+                  
+                  WeatherDetailList(weather: weather),
+                  
+                  const SizedBox(height: 20),
+
+                  SunAstroChart(weather: weather),
+                  
+                  const SizedBox(height: 40),
+
+                  if (airQuality != null)
+                     AirQualityWidget(airQuality: airQuality),
+
+                  const SizedBox(height: 100), 
                 ],
               ),
-
-              const SizedBox(height: 40),
-              
-              // --- 1. HOURLY FORECAST MODULE (Chart) ---
-              if (forecast != null && forecast.list.isNotEmpty) ...[
-                HourlyForecastChart(items: forecast.list),
-                const SizedBox(height: 20),
-              ],
-
-              if (forecast != null && forecast.list.isNotEmpty) ...[
-                DailyForecastWidget(items: forecast.list),
-                const SizedBox(height: 20),
-              ],
-              
-              // --- 3. DETAILS GRID ---
-              DetailsGridWidget(weather: weather),
-              
-              const SizedBox(height: 20),
-
-              // --- 4. SUN ASTRO CHART ---
-              SunAstroChart(weather: weather),
-              
-              const SizedBox(height: 40),
-              
-              const SizedBox(height: 20),
-
-              if (airQuality != null)
-                 AirQualityWidget(airQuality: airQuality),
-
-              const SizedBox(height: 100), // More padding for bottom indicators if needed
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
-
-
 
   Widget _buildErrorContent(BuildContext context, String message) {
     final isGPS = (context.findAncestorWidgetOfExactType<WeatherSinglePage>()?.cityName == null);
@@ -259,10 +247,6 @@ class _WeatherView extends StatelessWidget {
               onPressed: () {
                  if (isGPS) {
                     context.read<WeatherBloc>().add(GetWeatherForLocation());
-                 } else {
-                    // We can't easily get city name here if strict, luckily context read weather might have failed.
-                    // Retry simply triggers event again from parent logic or re-add event?
-                    // Ideally pass city name into _buildErrorContent
                  }
               }, 
               child: const Text('Thử lại')

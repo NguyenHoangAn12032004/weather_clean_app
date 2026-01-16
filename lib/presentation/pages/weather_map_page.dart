@@ -153,19 +153,23 @@ class _WeatherMapPageState extends State<WeatherMapPage> {
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
                       curve: Curves.easeInOut,
-                      width: isSelected ? 120 : 50, // Expand if selected
+                      width: isSelected ? 160 : 50, // Increased width
                       height: 50,
                       child: GlassContainer(
+                        padding: const EdgeInsets.symmetric(horizontal: 10), 
                         color: isSelected ? color.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(25),
                         opacity: isSelected ? 0.6 : 0.1,
                         child: Center(
                           child: isSelected 
-                            ? Text(
-                                name, 
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                overflow: TextOverflow.clip,
-                                maxLines: 1,
+                            ? Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                                child: Text(
+                                  name, 
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
                               )
                             : Icon(_getLayerIcon(key), color: Colors.white70, size: 20),
                         ),

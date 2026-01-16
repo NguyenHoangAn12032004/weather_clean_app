@@ -6,7 +6,9 @@ import '../../presentation/pages/search_page.dart';
 import '../../presentation/pages/weather_page_view.dart';
 
 import '../../presentation/pages/city_management_page.dart';
-import '../../presentation/pages/weather_map_page.dart'; // New
+import '../../presentation/pages/city_management_page.dart';
+import '../../presentation/pages/weather_map_page.dart';
+import '../../presentation/pages/settings_page.dart'; // New
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -64,6 +66,16 @@ final appRouter = GoRouter(
           },
         );
       },
+    ),
+    GoRoute(
+      path: '/settings',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const SettingsPage(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
     ),
   ],
 );

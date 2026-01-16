@@ -33,6 +33,7 @@ import 'domain/usecases/save_last_city_usecase.dart' as _i50;
 import 'domain/usecases/search_cities_usecase.dart' as _i171;
 import 'presentation/bloc/city_list_bloc.dart' as _i909;
 import 'presentation/bloc/search_bloc.dart' as _i306;
+import 'presentation/bloc/settings/settings_cubit.dart' as _i381;
 import 'presentation/bloc/weather_bloc.dart' as _i868;
 
 extension GetItInjectableX on _i174.GetIt {
@@ -48,14 +49,17 @@ extension GetItInjectableX on _i174.GetIt {
       () => networkModule.sharedPreferences,
       preResolve: true,
     );
+    gh.lazySingleton<_i381.SettingsCubit>(
+      () => _i381.SettingsCubit(gh<_i460.SharedPreferences>()),
+    );
+    gh.lazySingleton<_i510.WeatherLocalDataSource>(
+      () => _i510.WeatherLocalDataSourceImpl(gh<_i460.SharedPreferences>()),
+    );
     gh.lazySingleton<_i212.WeatherService>(
       () => networkModule.getWeatherService(gh<_i361.Dio>()),
     );
     gh.lazySingleton<_i340.GeoService>(
       () => networkModule.getGeoService(gh<_i361.Dio>()),
-    );
-    gh.lazySingleton<_i510.WeatherLocalDataSource>(
-      () => _i510.WeatherLocalDataSourceImpl(gh<_i460.SharedPreferences>()),
     );
     gh.lazySingleton<_i690.WeatherRepository>(
       () => _i807.WeatherRepositoryImpl(
@@ -86,13 +90,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i662.RemoveCityUseCase>(
       () => _i662.RemoveCityUseCase(gh<_i690.WeatherRepository>()),
     );
-    gh.factory<_i909.CityListBloc>(
-      () => _i909.CityListBloc(
-        gh<_i744.GetSavedCitiesUseCase>(),
-        gh<_i166.AddCityUseCase>(),
-        gh<_i662.RemoveCityUseCase>(),
-      ),
-    );
     gh.lazySingleton<_i180.GetCurrentWeatherUseCase>(
       () => _i180.GetCurrentWeatherUseCase(gh<_i690.WeatherRepository>()),
     );
@@ -104,6 +101,13 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i171.SearchCitiesUseCase>(
       () => _i171.SearchCitiesUseCase(gh<_i690.WeatherRepository>()),
+    );
+    gh.factory<_i909.CityListBloc>(
+      () => _i909.CityListBloc(
+        gh<_i744.GetSavedCitiesUseCase>(),
+        gh<_i166.AddCityUseCase>(),
+        gh<_i662.RemoveCityUseCase>(),
+      ),
     );
     gh.factory<_i306.SearchBloc>(
       () => _i306.SearchBloc(gh<_i171.SearchCitiesUseCase>()),

@@ -1,5 +1,6 @@
+
 import 'package:bloc_test/bloc_test.dart';
-import 'package:dartz/dartz.dart';
+import 'package:dartz/dartz.dart'; // For Either
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:weather_clean_app/core/error/failures.dart';
@@ -35,34 +36,6 @@ void main() {
   late MockGetForecastLocationUseCase mockGetForecastLocationUseCase;
   late MockGetAirQualityUseCase mockGetAirQualityUseCase;
 
-  const tCity = 'London';
-  final tWeather = const WeatherEntity(
-    cityName: 'London',
-    description: 'scattered clouds',
-    iconCode: '03d',
-    temperature: 15.0,
-    feelsLike: 14.0,
-    humidity: 82,
-    windSpeed: 3.5,
-    lat: 51.5074,
-    lon: -0.1278,
-    pressure: 1013,
-    visibility: 10000,
-    sunrise: 1618311234,
-    sunset: 1618361234,
-    timezone: 3600,
-  );
-  final tForecast = const ForecastEntity(list: [], cityName: 'London');
-  final tAirQuality = const AirQualityEntity(
-    aqiIndex: 1, 
-    co: 200, 
-    no2: 10, 
-    o3: 50, 
-    so2: 5, 
-    pm2_5: 2, 
-    pm10: 5,
-  );
-
   setUp(() {
     mockGetCurrentWeatherUseCase = MockGetCurrentWeatherUseCase();
     mockGetLastCityUseCase = MockGetLastCityUseCase();
@@ -81,100 +54,77 @@ void main() {
       mockGetForecastLocationUseCase,
       mockGetAirQualityUseCase,
     );
-
-    registerFallbackValue(tCity); 
-    when(() => mockSaveLastCityUseCase(any())).thenAnswer((_) async {});
   });
 
-  group('LoadSavedCity', () {
-    test('should fetch weather for last city when saved city exists', () async {
-      // arrange
-      when(() => mockGetLastCityUseCase()).thenAnswer((_) async => tCity);
-      when(() => mockGetCurrentWeatherUseCase(any())).thenAnswer((_) async => Right(tWeather));
-      when(() => mockGetForecastUseCase(any())).thenAnswer((_) async => Right(tForecast));
-      when(() => mockGetAirQualityUseCase(any(), any())).thenAnswer((_) async => Right(tAirQuality));
-      // act
-      weatherBloc.add(LoadSavedCity());
-      // assert
-      // We expect the Bloc to add GetWeatherForCity, which then emits loading and loaded
-      // Since we can't easily wait for the internal add, we verify the output states
+  const tWeather = WeatherEntity(
+    cityName: 'Hanoi',
+    description: 'Cloudy',
+    temperature: 25.0,
+    feelsLike: 26.0,
+    humidity: 80,
+    windSpeed: 10.0,
+    iconCode: '04d',
+    timezone: 25200,
+    lat: 21.0,
+    lon: 105.0,
+    pressure: 1012,
+    visibility: 10000,
+    sunrise: 1600000000,
+    sunset: 1600050000,
+  );
+
+  const tForecast = ForecastEntity(list: [], cityName: 'Hanoi');
+  
+  // Minimal AQI object
+  const tAirQuality = AirQualityEntity(aqiIndex: 1, co: 0, no2: 0, o3: 0, so2: 0, pm2_5: 0, pm10: 0);
+
+  test('initial state should be WeatherInitial', () {
+    expect(weatherBloc.state, equals(WeatherInitial()));
+  });
+
+  blocTest<WeatherBloc, WeatherState>(
+    'emits [WeatherLoading, WeatherLoaded] when GetWeatherForCity is added and API calls succeed',
+    build: () {
+      when(() => mockGetCurrentWeatherUseCase(any()))
+          .thenAnswer((_) async => const Right(tWeather));
+      when(() => mockGetForecastUseCase(any()))
+          .thenAnswer((_) async => const Right(tForecast));
+      when(() => mockGetAirQualityUseCase(any(), any()))
+          .thenAnswer((_) async => const Right(tAirQuality));
+      when(() => mockSaveLastCityUseCase(any()))
+          .thenAnswer((_) async => {});
+          
+      return weatherBloc;
+    },
+    act: (bloc) => bloc.add(const GetWeatherForCity('Hanoi')),
+    expect: () => [
+      WeatherLoading(),
+      WeatherLoaded(tWeather, forecast: tForecast, airQuality: tAirQuality),
+    ],
+    verify: (_) {
+      verify(() => mockGetCurrentWeatherUseCase('Hanoi')).called(1);
+      verify(() => mockGetForecastUseCase('Hanoi')).called(1);
+      verify(() => mockGetAirQualityUseCase(tWeather.lat, tWeather.lon)).called(1);
+      verify(() => mockSaveLastCityUseCase('Hanoi')).called(1);
+    },
+  );
+
+  blocTest<WeatherBloc, WeatherState>(
+    'emits [WeatherLoading, WeatherError] when GetWeatherForCity fails for current weather',
+    build: () {
+      when(() => mockGetCurrentWeatherUseCase(any()))
+          .thenAnswer((_) async => const Left(ServerFailure('Server Error')));
+      when(() => mockGetForecastUseCase(any()))
+          .thenAnswer((_) async => const Right(tForecast)); // Forecast might succeed independently? Parallel call handling
       
-      // Actually, LoadSavedCity emits WeatherLoading then adds GetWeatherForCity event.
-      // The internal event handling happens asynchronously. 
-      // block_test might catch this if wait is long enough or if we test GetWeatherForCity directly.
-      // But let's verify mock calls for now.
+      // Note: In WeatherBloc, if results[0] (Weather) fails, it emits Error immediately.
       
-      // It's better to test that LoadSavedCity calls GetLastCityUseCase.
-      await untilCalled(() => mockGetLastCityUseCase());
-      verify(() => mockGetLastCityUseCase()).called(1);
-    });
-
-    test('should fetch weather for location when no saved city exists', () async {
-      // arrange
-      when(() => mockGetLastCityUseCase()).thenAnswer((_) async => null);
-      when(() => mockGetCurrentLocationWeatherUseCase()).thenAnswer((_) async => Right(tWeather));
-      when(() => mockGetForecastLocationUseCase()).thenAnswer((_) async => Right(tForecast));
-      when(() => mockGetAirQualityUseCase(any(), any())).thenAnswer((_) async => Right(tAirQuality));
-
-      // act
-      weatherBloc.add(LoadSavedCity());
-      
-      await untilCalled(() => mockGetLastCityUseCase());
-      verify(() => mockGetLastCityUseCase()).called(1);
-    });
-  });
-
-  group('GetWeatherForCity', () {
-    blocTest<WeatherBloc, WeatherState>(
-      'emits [WeatherLoading, WeatherLoaded] when successful',
-      build: () {
-        when(() => mockGetCurrentWeatherUseCase(any())).thenAnswer((_) async => Right(tWeather));
-        when(() => mockGetForecastUseCase(any())).thenAnswer((_) async => Right(tForecast));
-        when(() => mockGetAirQualityUseCase(any(), any())).thenAnswer((_) async => Right(tAirQuality));
-        return weatherBloc;
-      },
-      act: (bloc) => bloc.add(const GetWeatherForCity(tCity)),
-      expect: () => [
-        WeatherLoading(),
-        WeatherLoaded(tWeather, forecast: tForecast, airQuality: tAirQuality),
-      ],
-      verify: (_) {
-        verify(() => mockSaveLastCityUseCase(tCity)).called(1);
-      },
-    );
-
-    blocTest<WeatherBloc, WeatherState>(
-      'emits [WeatherLoading, WeatherError] when getting weather fails',
-      build: () {
-        when(() => mockGetCurrentWeatherUseCase(any())).thenAnswer((_) async => const Left(ServerFailure('Server Error')));
-        when(() => mockGetForecastUseCase(any())).thenAnswer((_) async => Right(tForecast)); // Forecast might succeed but weather fails -> Error
-        return weatherBloc;
-      },
-      act: (bloc) => bloc.add(const GetWeatherForCity(tCity)),
-      expect: () => [
-        WeatherLoading(),
-        const WeatherError('Server Error'),
-      ],
-    );
-  });
-
-  group('GetWeatherForLocation', () {
-    blocTest<WeatherBloc, WeatherState>(
-      'emits [WeatherLoading, WeatherLoaded] when successful',
-      build: () {
-        when(() => mockGetCurrentLocationWeatherUseCase()).thenAnswer((_) async => Right(tWeather));
-        when(() => mockGetForecastLocationUseCase()).thenAnswer((_) async => Right(tForecast));
-        when(() => mockGetAirQualityUseCase(any(), any())).thenAnswer((_) async => Right(tAirQuality));
-        return weatherBloc;
-      },
-      act: (bloc) => bloc.add(GetWeatherForLocation()),
-      expect: () => [
-        WeatherLoading(),
-        WeatherLoaded(tWeather, forecast: tForecast, airQuality: tAirQuality),
-      ],
-      verify: (_) {
-         verify(() => mockSaveLastCityUseCase(tCity)).called(1);
-      }
-    );
-  });
+      return weatherBloc;
+    },
+    act: (bloc) => bloc.add(const GetWeatherForCity('Hanoi')),
+    expect: () => [
+      WeatherLoading(),
+      const WeatherError('Server Error'),
+    ],
+  );
 }

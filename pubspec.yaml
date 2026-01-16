@@ -56,8 +56,8 @@ dependencies:
   latlong2: ^0.9.1
 
 dev_dependencies:
-  mocktail: any
-  bloc_test: any
+  mocktail: ^1.0.4
+  bloc_test: ^10.0.0
   flutter_test:
     sdk: flutter
 
